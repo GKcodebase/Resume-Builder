@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: resume-analyzer-api
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  main:
+    allow-bean-definition-overriding: true
