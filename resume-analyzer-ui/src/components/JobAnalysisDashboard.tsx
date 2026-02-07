@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { AnalysisResult } from "@/components/AnalysisResult"
-import { Loader2, Settings, AlertCircle } from "lucide-react"
+import { Loader2, Settings, History, AlertCircle } from "lucide-react"
+import Link from "next/link"
 
 interface AnalysisResponse {
     id: string
@@ -105,10 +106,18 @@ export function JobAnalysisDashboard({ uploadedResumeId }: { uploadedResumeId?: 
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold tracking-tight">Job Analysis</h2>
-                <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
-                    <Settings className="w-4 h-4 mr-2" />
-                    AI Settings
-                </Button>
+                <div className="flex gap-2">
+                    <Link href="/history">
+                        <Button variant="outline" size="sm">
+                            <History className="w-4 h-4 mr-2" />
+                            History
+                        </Button>
+                    </Link>
+                    <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}>
+                        <Settings className="w-4 h-4 mr-2" />
+                        AI Settings
+                    </Button>
+                </div>
             </div>
 
             {showSettings && (

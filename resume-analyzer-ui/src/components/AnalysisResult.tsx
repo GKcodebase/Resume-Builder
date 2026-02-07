@@ -18,6 +18,8 @@ interface AnalysisResultData {
     tailoredResume?: string
 }
 
+import { jsPDF } from "jspdf"
+
 export function AnalysisResult({ result }: { result: AnalysisResultData }) {
     if (!result) return null
 
@@ -36,6 +38,30 @@ export function AnalysisResult({ result }: { result: AnalysisResultData }) {
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
+    }
+
+    const downloadPdf = (content: string, filename: string) => {
+        const doc = new jsPDF()
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const margin = 15
+        const maxLineWidth = pageWidth - (margin * 2)
+
+        doc.setFontSize(12)
+
+        // Simple text wrapping
+        const lines = doc.splitTextToSize(content, maxLineWidth)
+        let cursorY = 20
+
+        lines.forEach((line: string) => {
+            if (cursorY > 280) { // New page if near bottom
+                doc.addPage()
+                cursorY = 20
+            }
+            doc.text(line, margin, cursorY)
+            cursorY += 7
+        })
+
+        doc.save(filename)
     }
 
     return (
@@ -139,7 +165,10 @@ export function AnalysisResult({ result }: { result: AnalysisResultData }) {
                                     <Copy className="w-4 h-4 mr-2" /> Copy
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => downloadFile(result.coverLetter, "Cover_Letter.txt")}>
-                                    <Download className="w-4 h-4 mr-2" /> Download
+                                    <Download className="w-4 h-4 mr-2" /> .txt
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => downloadPdf(result.coverLetter, "Cover_Letter.pdf")}>
+                                    <Download className="w-4 h-4 mr-2" /> .pdf
                                 </Button>
                             </div>
                         </CardHeader>
@@ -160,7 +189,10 @@ export function AnalysisResult({ result }: { result: AnalysisResultData }) {
                                     <Copy className="w-4 h-4 mr-2" /> Copy
                                 </Button>
                                 <Button variant="outline" size="sm" onClick={() => downloadFile(result.tailoredResume || "", "Tailored_Resume.md")}>
-                                    <Download className="w-4 h-4 mr-2" /> Download MD
+                                    <Download className="w-4 h-4 mr-2" /> .md
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => downloadPdf(result.tailoredResume || "", "Tailored_Resume.pdf")}>
+                                    <Download className="w-4 h-4 mr-2" /> .pdf
                                 </Button>
                             </div>
                         </CardHeader>
