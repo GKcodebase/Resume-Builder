@@ -9,3 +9,10 @@ spring:
       max-request-size: 10MB
   main:
     allow-bean-definition-overriding: true
+
+server:
+  tomcat:
+    connection-timeout: 300000 # 5 minutes
+    max-http-post-size: 10MB
+  shutdown: graceful
+  shutdown-wait-time: 60s

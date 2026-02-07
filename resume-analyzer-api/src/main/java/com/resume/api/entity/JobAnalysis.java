@@ -41,6 +41,19 @@ public class JobAnalysis {
     
     private String modelUsed;
 
+    @Column(length = 1000)
+    private String apiKey; // Store API key for background processing
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private AnalysisStatus status = AnalysisStatus.PENDING;
+
+    @Column(columnDefinition = "TEXT")
+    private String errorMessage; // Error details if status is ERROR
+
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

@@ -1,6 +1,7 @@
 package com.resume.api.service;
 
 import com.resume.api.entity.JobAnalysis;
+import com.resume.api.entity.AnalysisStatus;
 import com.resume.api.entity.Resume;
 import com.resume.api.repository.JobAnalysisRepository;
 import com.resume.api.repository.ResumeRepository;
@@ -9,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -19,70 +21,55 @@ public class AnalysisService {
     private final ResumeRepository resumeRepository;
     private final JobAnalysisRepository jobAnalysisRepository;
     private final ScraperService scraperService;
-    private final AiService aiService;
 
-    public JobAnalysis analyze(UUID resumeId, String jobDescriptionInput, boolean isUrl, String provider, String apiKey,
-            String model) throws IOException {
-        // 1. Fetch Resume
+    /**
+     * Phase 1: Fast endpoint - validates and creates pending analysis record
+     * Returns immediately without waiting for AI processing
+     */
+    public JobAnalysis initiateAnalysis(UUID resumeId, String jobDescriptionInput, boolean isUrl, 
+                                       String provider, String apiKey, String model) throws IOException {
+        
+        // 1. Validate Resume exists
         Resume resume = resumeRepository.findById(resumeId)
                 .orElseThrow(() -> new RuntimeException("Resume not found"));
 
-        // 2. Process Job Description
+        log.info("Initiating analysis for resume: {}", resumeId);
+
+        // 2. Validate Job Description Input
+        if (jobDescriptionInput == null || jobDescriptionInput.trim().isEmpty()) {
+            throw new RuntimeException("Job description cannot be empty");
+        }
+
+        // 3. Try to scrape if URL (fail gracefully and store original URL)
         String jobDescriptionText = jobDescriptionInput;
         if (isUrl) {
             try {
+                log.info("Pre-scraping job description from URL to validate...");
                 jobDescriptionText = scraperService.scrapeJobDescription(jobDescriptionInput);
+                log.info("URL scraped successfully, length: {}", jobDescriptionText.length());
             } catch (Exception e) {
-                log.error("Failed to scrape URL", e);
-                throw new RuntimeException("Failed to scrape Job URL: " + e.getMessage());
+                log.warn("Failed to pre-scrape URL, will retry during processing: {}", e.getMessage());
+                // Don't fail here, let the background processor retry
             }
         }
 
-        // 3. Construct Prompt
-        String prompt = constructPrompt(resume.getContent(), jobDescriptionText);
-
-        // 4. Call AI
-        String analysisJson = aiService.analyzeJob(provider, apiKey, model, prompt);
-
-        // 5. Save Result
+        // 4. Create PENDING analysis record
         JobAnalysis analysis = JobAnalysis.builder()
                 .resume(resume)
-                .jobDescriptionEntry(jobDescriptionInput) // Save the original input (URL or text)
-                .analysisResultJson(analysisJson)
+                .jobDescriptionEntry(jobDescriptionInput) // Store original input
+                .analysisResultJson(null) // Will be filled by background processor
                 .providerUsed(provider)
-                .modelUsed(model)
+                .modelUsed(model != null && !model.isEmpty() ? model : "default")
+                .apiKey(apiKey) // Store API key for background processing
+                .status(AnalysisStatus.PENDING)
+                .errorMessage(null)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
-        return jobAnalysisRepository.save(analysis);
-    }
+        JobAnalysis savedAnalysis = jobAnalysisRepository.save(analysis);
+        log.info("Analysis initiated with ID: {}, status: PENDING", savedAnalysis.getId());
 
-    private String constructPrompt(String resumeText, String jobDescription) {
-        return """
-                You are an expert Resume Analyzer and Career Coach.
-                Analyze the following Resume against the Job Description.
-
-                JOB DESCRIPTION:
-                %s
-
-                RESUME:
-                %s
-
-                Output the result strictly in JSON format with the following structure:
-                {
-                  "atsScore": 0-100,
-                  "recruiterScore": 0-100,
-                  "matchRatio": "0-100%%",
-                  "missingKeywords": ["list", "of", "keywords"],
-                  "matchingKeywords": ["list", "of", "keywords"],
-                  "successProbability": "Low/Medium/High",
-                  "summary": "Brief summary of fit",
-                  "improvements": ["bullet", "points"],
-                  "preparationMaterials": [
-                     {"title": "Topic", "link": "search query or url"}
-                  ],
-                  "coverLetter": "Draft text..."
-                }
-                Do not include markdown formatting like ```json ... ```, just the raw JSON.
-                """.formatted(jobDescription, resumeText);
+        return savedAnalysis;
     }
 }

@@ -6,6 +6,8 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
 @Service
 @Slf4j
 public class AiService {
@@ -24,12 +26,14 @@ public class AiService {
                         .apiKey(apiKey)
                         .modelName(modelName != null && !modelName.isEmpty() ? modelName : "gemini-1.5-pro")
                         .temperature(0.7)
+                        .timeout(Duration.ofSeconds(120))
                         .build();
             } else if ("OPENAI".equalsIgnoreCase(provider)) {
                 chatModel = OpenAiChatModel.builder()
                         .apiKey(apiKey)
                         .modelName(modelName != null && !modelName.isEmpty() ? modelName : "gpt-4o")
                         .temperature(0.7)
+                        .timeout(Duration.ofSeconds(120))
                         .build();
             } else {
                 throw new IllegalArgumentException("Unsupported provider: " + provider);

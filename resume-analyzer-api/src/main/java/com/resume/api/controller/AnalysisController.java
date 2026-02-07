@@ -21,9 +21,13 @@ public class AnalysisController {
     private final AnalysisService analysisService;
     private final JobAnalysisRepository jobAnalysisRepository;
 
+    /**
+     * POST /api/analysis - Initiate analysis (returns immediately)
+     * The actual AI analysis happens asynchronously in the background
+     */
     @PostMapping
     public ResponseEntity<JobAnalysis> analyzeJob(@RequestBody AnalysisRequest request) throws IOException {
-        JobAnalysis analysis = analysisService.analyze(
+        JobAnalysis analysis = analysisService.initiateAnalysis(
                 request.getResumeId(),
                 request.getJobDescription(),
                 request.isUrl(),
@@ -33,6 +37,18 @@ public class AnalysisController {
         return ResponseEntity.ok(analysis);
     }
 
+    /**
+     * GET /api/analysis/{id} - Get analysis status and results
+     * Returns current status (PENDING, PROCESSING, COMPLETE, ERROR) and results if complete
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<JobAnalysis> getAnalysis(@PathVariable UUID id) {
+        return ResponseEntity.of(jobAnalysisRepository.findById(id));
+    }
+
+    /**
+     * GET /api/analysis/resume/{resumeId} - Get analysis history for a resume
+     */
     @GetMapping("/resume/{resumeId}")
     public List<JobAnalysis> getHistory(@PathVariable UUID resumeId) {
         return jobAnalysisRepository.findByResumeIdOrderByCreatedAtDesc(resumeId);
